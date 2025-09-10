@@ -1,0 +1,9 @@
+{
+  "name": "ai-photo-booth-vercel",
+  "version": "1.0.0",
+  "description": "AI Photo Booth with Vercel deployment",
+  "main": "index.html",
+  "dependencies": {
+    "formidable": "^3.5.1"
+  }
+}

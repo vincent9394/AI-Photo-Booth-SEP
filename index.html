@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Photo Booth by Vincent Luk</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .hidden {
+            display: none;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        video, canvas, img {
+            max-width: 100%;
+            border-radius: 0.5rem;
+        }
+        #notification {
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Notification Element -->
+    <div id="notification" class="hidden fixed top-5 right-5 bg-red-500 text-white py-2 px-4 rounded-lg shadow-lg transition-opacity duration-300">
+        <p id="notification-message"></p>
+    </div>
+
+    <div id="app" class="container mx-auto p-4 md:p-8 max-w-4xl">
+
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">AI Photo Booth by Vincent Luk</h1>
+            <p class="text-gray-600 mt-2">Create fun new photos by replacing your background with AI!</p>
+        </header>
+
+        <!-- Page 1: Photo Selector -->
+        <div id="page-photo-selector" class="bg-white p-6 md:p-8 rounded-lg shadow-md">
+            <h2 class="text-2xl font-semibold mb-4">Step 1: Choose Your Selfie</h2>
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
+                    <h3 class="text-xl font-medium mb-3">Upload a Photo</h3>
+                    <p class="text-gray-500 mb-4">Select a photo from your device.</p>
+                    <input type="file" id="file-input" class="hidden" accept="image/*">
+                    <button id="upload-button" class="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600">Select Photo</button>
+                </div>
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-green-500 transition-colors">
+                    <h3 class="text-xl font-medium mb-3">Use Webcam</h3>
+                    <p class="text-gray-500 mb-4">Capture a new photo with your camera.</p>
+                    <button id="webcam-button" class="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600">Open Camera</button>
+                </div>
+            </div>
+            <div id="webcam-container" class="hidden mt-6">
+                <video id="webcam-video" autoplay playsinline class="w-full rounded-lg shadow"></video>
+                <button id="capture-button" class="mt-4 w-full bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600">Capture Photo</button>
+            </div>
+            <div id="webcam-error" class="hidden mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg"></div>
+            <div id="photo-preview-container" class="hidden mt-6 text-center">
+                <h3 class="text-lg font-medium mb-2">Your Selected Photo:</h3>
+                <img id="photo-preview" src="" alt="Your selected photo" class="mx-auto rounded-lg shadow-lg">
+                <button id="next-to-selfie-processing" class="mt-4 bg-indigo-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-indigo-600">Next</button>
+            </div>
+        </div>
+
+        <!-- Page 2: Selfie Processing -->
+        <div id="page-processing-selfie" class="hidden bg-white p-6 md:p-8 rounded-lg shadow-md">
+            <h2 class="text-2xl font-semibold mb-4 text-center">Step 2: Preparing Your Selfie</h2>
+            <div class="text-center py-8">
+                <div class="loader inline-block"></div>
+                <p id="processing-text" class="mt-4 text-gray-600">Removing background... Please wait.</p>
+            </div>
+        </div>
+
+        <!-- Page 3: Background & Filter Generator -->
+        <div id="page-background-generator" class="hidden bg-white p-6 md:p-8 rounded-lg shadow-md">
+            <h2 class="text-2xl font-semibold mb-4 text-center">Step 3: Customize Your Creation</h2>
+
+            <!-- Layer 1: Choose Category -->
+            <div class="border-b pb-4 mb-4">
+                <h3 class="text-xl font-semibold mb-3 text-center">1. Generate Background</h3>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="topic-select" class="block text-sm font-medium text-gray-700 mb-1">Choose a Category</label>
+                        <select id="topic-select" class="w-full p-2 border border-gray-300 rounded-lg">
+                            <option>Funny</option> <option>Humor</option> <option>Academic</option> <option>Sad</option> <option>Meme</option> <option>News</option> <option>Nature</option> <option>Animal</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="prompt-input" class="block text-sm font-medium text-gray-700 mb-1">Describe your background</label>
+                        <input type="text" id="prompt-input" placeholder="e.g., a cat wearing a wizard hat" class="w-full p-2 border border-gray-300 rounded-lg">
+                    </div>
+                </div>
+                <button id="generate-bg-button" class="mt-4 w-full bg-purple-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-600">Generate Background</button>
+            </div>
+
+            <!-- Layer 2: Background Photo Preview -->
+            <div id="background-preview-container" class="hidden border-b pb-4 mb-4 text-center">
+                <h3 class="text-xl font-semibold mb-3 text-center">2. Background Preview</h3>
+                <div class="relative inline-block bg-gray-200 rounded-lg shadow-lg">
+                    <img id="background-preview" src="" alt="Generated background" class="rounded-lg">
+                    <div id="background-generator-loader" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 rounded-lg hidden">
+                        <div class="loader"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Layer 3: Special Effects -->
+            <div class="border-b pb-4 mb-4">
+                 <h3 class="text-xl font-semibold text-center mb-3">3. Special Effects</h3>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="effect-select" class="block text-sm font-medium text-gray-700 mb-1">Choose a Theme</label>
+                        <select id="effect-select" class="w-full p-2 border border-gray-300 rounded-lg">
+                            <option value="aging">Getting Old</option>
+                            <option value="youth">Getting Young</option>
+                            <option value="monster">Being a Monster</option>
+                            <option value="timeTraveler">Time Traveler</option>
+                            <option value="styleLookbook">Style Lookbook</option>
+                            <option value="mallShoot80s">80s Mall Shoot</option>
+                            <option value="miniatureMe">Miniature Me</option>
+                            <option value="hairStyler">Hair Styler</option>
+                            <option value="impossiblePics">Impossible Pics</option>
+                            <option value="proHeadshots">Pro Headshots</option>
+                            <option value="figurine3d">3D Figure</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="effect-prompt-input" class="block text-sm font-medium text-gray-700 mb-1">Add custom details (optional)</label>
+                        <input type="text" id="effect-prompt-input" placeholder="e.g., with a pirate hat" class="w-full p-2 border border-gray-300 rounded-lg">
+                    </div>
+                 </div>
+                 <div class="flex flex-col md:flex-row gap-4 items-center justify-center">
+                    <button id="apply-effect-button" class="w-full md:w-auto bg-teal-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-teal-600">Apply Effect</button>
+                    <button id="original-selfie-button" class="w-full md:w-auto bg-gray-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-600">Use Original</button>
+                 </div>
+            </div>
+
+            <!-- Layer 4: Selfie Photo Preview -->
+            <div id="selfie-preview-step3-container" class="text-center mb-4">
+                <h3 class="text-xl font-semibold mb-3 text-center">4. Your Selfie</h3>
+                <div class="relative inline-block bg-gray-200 rounded-lg shadow-lg w-1/2">
+                    <img id="selfie-preview-step3" src="" alt="Your processed selfie" class="rounded-lg">
+                </div>
+            </div>
+            
+            <!-- Final "Next" Button -->
+            <button id="next-to-confirm" class="mt-4 w-full bg-indigo-500 text-white font-bold py-3 px-8 rounded-lg hover:bg-indigo-600 text-lg">Next Step: Confirm</button>
+        </div>
+
+        <!-- Page 4: Confirmation -->
+        <div id="page-confirmation" class="hidden bg-white p-6 md:p-8 rounded-lg shadow-md">
+            <h2 class="text-2xl font-semibold mb-6 text-center">Step 4: Confirm Your Creation</h2>
+            <div class="grid md:grid-cols-2 gap-6 items-start">
+                <div class="text-center">
+                    <h3 class="text-xl font-medium mb-3">Your Selfie</h3>
+                    <img id="selfie-result" src="" alt="Selfie with background removed" class="rounded-lg shadow-lg bg-gray-200">
+                    <button id="change-selfie-button" class="mt-4 bg-gray-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-600">Change Selfie</button>
+                </div>
+                <div class="text-center">
+                    <h3 class="text-xl font-medium mb-3">Generated Background</h3>
+                    <img id="background-result" src="" alt="Generated background" class="rounded-lg shadow-lg bg-gray-200">
+                    <button id="change-background-button" class="mt-4 bg-gray-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-600">Change Background</button>
+                </div>
+            </div>
+            <div class="text-center mt-8">
+                <button id="confirm-and-combine-button" class="bg-green-500 text-white font-bold py-3 px-8 rounded-lg hover:bg-green-600 text-lg">Combine Photos</button>
+            </div>
+        </div>
+
+        <!-- Page 5: Final Result -->
+        <div id="page-final-result" class="hidden bg-white p-6 md:p-8 rounded-lg shadow-md text-center">
+            <h2 class="text-2xl font-semibold mb-4">Step 5: Your Masterpiece is Ready!</h2>
+            <div class="relative inline-block">
+                <canvas id="final-canvas" class="rounded-lg shadow-xl"></canvas>
+                 <div id="final-loader" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 rounded-lg hidden">
+                    <div class="loader"></div><p class="ml-4">Combining images...</p>
+                </div>
+            </div>
+            <div class="mt-6">
+                <a id="download-button" href="#" download="my-creation.png" class="bg-blue-500 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-600 text-lg inline-block">Download Photo</a>
+                <button id="start-over-button" class="ml-4 bg-gray-200 text-gray-800 font-bold py-3 px-8 rounded-lg hover:bg-gray-300">Start Over</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- State Management ---
+            const state = {
+                originalPhoto: null, // Blob or File object
+                processedSelfieUrl: null, // URL for the current selfie (aged or normal)
+                removedBgSelfieUrl: null, // URL for the background-removed selfie
+                generatedBgUrl: null, // URL from Gemini
+            };
+
+            // --- DOM Elements ---
+            const pages = {
+                photoSelector: document.getElementById('page-photo-selector'),
+                processingSelfie: document.getElementById('page-processing-selfie'),
+                backgroundGenerator: document.getElementById('page-background-generator'),
+                confirmation: document.getElementById('page-confirmation'),
+                finalResult: document.getElementById('page-final-result'),
+            };
+
+            const elements = {
+                // Page 1
+                fileInput: document.getElementById('file-input'),
+                uploadButton: document.getElementById('upload-button'),
+                webcamButton: document.getElementById('webcam-button'),
+                webcamContainer: document.getElementById('webcam-container'),
+                webcamVideo: document.getElementById('webcam-video'),
+                captureButton: document.getElementById('capture-button'),
+                photoPreviewContainer: document.getElementById('photo-preview-container'),
+                photoPreview: document.getElementById('photo-preview'),
+                nextToSelfieProcessing: document.getElementById('next-to-selfie-processing'),
+                webcamError: document.getElementById('webcam-error'),
+                processingText: document.getElementById('processing-text'),
+
+                // Page 3
+                topicSelect: document.getElementById('topic-select'),
+                promptInput: document.getElementById('prompt-input'),
+                generateBgButton: document.getElementById('generate-bg-button'),
+                effectSelect: document.getElementById('effect-select'),
+                effectPromptInput: document.getElementById('effect-prompt-input'),
+                applyEffectButton: document.getElementById('apply-effect-button'),
+                originalSelfieButton: document.getElementById('original-selfie-button'),
+                backgroundPreviewContainer: document.getElementById('background-preview-container'),
+                backgroundPreview: document.getElementById('background-preview'),
+                backgroundGeneratorLoader: document.getElementById('background-generator-loader'),
+                selfiePreviewStep3: document.getElementById('selfie-preview-step3'),
+                nextToConfirm: document.getElementById('next-to-confirm'),
+
+                // Page 4
+                selfieResult: document.getElementById('selfie-result'),
+                backgroundResult: document.getElementById('background-result'),
+                changeSelfieButton: document.getElementById('change-selfie-button'),
+                changeBackgroundButton: document.getElementById('change-background-button'),
+                confirmAndCombineButton: document.getElementById('confirm-and-combine-button'),
+
+                // Page 5
+                finalCanvas: document.getElementById('final-canvas'),
+                finalLoader: document.getElementById('final-loader'),
+                downloadButton: document.getElementById('download-button'),
+                startOverButton: document.getElementById('start-over-button'),
+            };
+            
+            // --- UI Logic ---
+            const showPage = (pageId) => {
+                Object.values(pages).forEach(page => page.classList.add('hidden'));
+                pages[pageId].classList.remove('hidden');
+            };
+
+            function showNotification(message, isError = true) {
+                const notification = document.getElementById('notification');
+                const messageEl = document.getElementById('notification-message');
+                messageEl.textContent = message;
+                notification.className = `fixed top-5 right-5 text-white py-2 px-4 rounded-lg shadow-lg transition-opacity duration-300 ${isError ? 'bg-red-500' : 'bg-green-500'}`;
+                notification.classList.remove('hidden');
+                setTimeout(() => { notification.classList.add('hidden'); }, 5000);
+            }
+
+            // --- Page 1: Photo Selection ---
+            elements.uploadButton.addEventListener('click', () => elements.fileInput.click());
+            elements.fileInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file) handlePhotoSelected(file);
+            });
+
+            elements.webcamButton.addEventListener('click', async () => {
+                elements.webcamError.classList.add('hidden');
+                elements.webcamContainer.classList.add('hidden');
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    elements.webcamError.textContent = "Webcam access is not supported by your browser.";
+                    elements.webcamError.classList.remove('hidden');
+                    return;
+                }
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    elements.webcamVideo.srcObject = stream;
+                    elements.webcamContainer.classList.remove('hidden');
+                } catch (err) {
+                    console.error("Error accessing webcam: ", err);
+                    let msg = "Could not access the webcam. Please grant permission.";
+                    if (err.name === 'NotAllowedError') msg = "Webcam access denied. Please enable it in browser settings.";
+                    else if (err.name === 'NotFoundError') msg = "No webcam found. Please connect a camera.";
+                    elements.webcamError.textContent = msg;
+                    elements.webcamError.classList.remove('hidden');
+                }
+            });
+
+            elements.captureButton.addEventListener('click', () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = elements.webcamVideo.videoWidth;
+                canvas.height = elements.webcamVideo.videoHeight;
+                canvas.getContext('2d').drawImage(elements.webcamVideo, 0, 0, canvas.width, canvas.height);
+                elements.webcamVideo.srcObject.getTracks().forEach(track => track.stop());
+                elements.webcamContainer.classList.add('hidden');
+                canvas.toBlob(blob => handlePhotoSelected(blob), 'image/png');
+            });
+
+            function handlePhotoSelected(photoBlob) {
+                state.originalPhoto = photoBlob;
+                elements.photoPreview.src = URL.createObjectURL(photoBlob);
+                elements.photoPreviewContainer.classList.remove('hidden');
+            }
+
+            elements.nextToSelfieProcessing.addEventListener('click', () => {
+                if (!state.originalPhoto) {
+                    showNotification('Please select a photo first!');
+                    return;
+                }
+                processSelfie();
+            });
+
+            // --- Step 2: Selfie Processing ---
+            async function processSelfie() {
+                elements.processingText.textContent = "Removing background... Please wait.";
+                showPage('processingSelfie');
+                try {
+                    const removedBgUrl = await removeBackground(state.originalPhoto);
+                    state.removedBgSelfieUrl = removedBgUrl;
+                    state.processedSelfieUrl = removedBgUrl; // Initially, the processed selfie is the normal one
+                    
+                    elements.selfiePreviewStep3.src = state.processedSelfieUrl;
+                    
+                    showPage('backgroundGenerator');
+                    if (!state.generatedBgUrl) {
+                        elements.generateBgButton.click();
+                    }
+                } catch (error) {
+                    console.error("Error during selfie processing:", error);
+                    showNotification(error.message || 'Failed to process selfie.');
+                    showPage('photoSelector');
+                }
+            }
+            
+            // --- UPDATED to call Vercel API ---
+            async function removeBackground(imageFile) {
+                const formData = new FormData();
+                formData.append('image_file', imageFile);
+                try {
+                    // Call your own API route
+                    const response = await fetch('/api/remove-background', {
+                        method: 'POST',
+                        body: formData,
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.errors?.[0]?.title || 'Failed to remove background via proxy.');
+                    }
+                    const blob = await response.blob();
+                    return URL.createObjectURL(blob);
+                } catch (error) {
+                    console.error('remove.bg proxy error:', error);
+                    throw new Error('Background removal service failed.');
+                }
+            }
+            
+            // --- Step 3: Background & Filter Generation ---
+            elements.generateBgButton.addEventListener('click', async () => {
+                elements.backgroundPreviewContainer.classList.remove('hidden');
+                elements.backgroundGeneratorLoader.classList.remove('hidden');
+                try {
+                    const generatedBgUrl = await generateBackground();
+                    state.generatedBgUrl = generatedBgUrl;
+                    elements.backgroundPreview.src = state.generatedBgUrl;
+                } catch (error) {
+                    showNotification(error.message || 'Failed to generate background.');
+                } finally {
+                    elements.backgroundGeneratorLoader.classList.add('hidden');
+                }
+            });
+            
+            async function applySpecialEffect(effectType) {
+                const customPrompt = elements.effectPromptInput.value;
+                console.log(`Applying effect: ${effectType} with custom prompt: "${customPrompt}"`);
+                
+                const effects = {
+                    'aging': { processingMessage: "Applying aging filter...", simulation: (ctx, img) => { ctx.filter = 'sepia(0.5) grayscale(0.5) contrast(1.1) brightness(0.9)'; ctx.drawImage(img, 0, 0); }},
+                    'youth': { processingMessage: "Applying youth filter...", simulation: (ctx, img) => { ctx.filter = 'saturate(1.2) contrast(1.1) brightness(1.05)'; ctx.drawImage(img, 0, 0); }},
+                    'monster': { processingMessage: "Turning you into a monster...", simulation: (ctx, img) => { ctx.filter = 'sepia(0.3) hue-rotate(90deg) saturate(1.5) contrast(1.2)'; ctx.drawImage(img, 0, 0); }},
+                    'timeTraveler': { processingMessage: "Traveling through time...", simulation: (ctx, img) => { ctx.filter = 'sepia(0.6) contrast(0.9) brightness(0.9) blur(0.5px)'; ctx.drawImage(img, 0, 0); }},
+                    'styleLookbook': { processingMessage: "Creating your lookbook shot...", simulation: (ctx, img) => { ctx.filter = 'saturate(1.3) contrast(1.2)'; ctx.drawImage(img, 0, 0); }},
+                    'mallShoot80s': { processingMessage: "Hitting the 80s mall...", simulation: (ctx, img) => { ctx.filter = 'saturate(1.1) contrast(0.95)'; ctx.drawImage(img, 0, 0); ctx.globalCompositeOperation = 'overlay'; ctx.fillStyle = 'rgba(255, 0, 255, 0.1)'; ctx.fillRect(0, 0, img.width, img.height); ctx.fillStyle = 'rgba(0, 255, 255, 0.1)'; ctx.fillRect(0, 0, img.width, img.height); ctx.globalCompositeOperation = 'source-over'; }},
+                    'miniatureMe': { processingMessage: "Shrinking you down to size...", simulation: (ctx, img) => { ctx.filter = 'saturate(1.5) contrast(1.3)'; ctx.drawImage(img, 0, 0); }},
+                    'hairStyler': { processingMessage: "Trying a new hairstyle...", simulation: (ctx, img) => { ctx.filter = 'hue-rotate(45deg) saturate(1.2)'; ctx.drawImage(img, 0, 0); }},
+                    'impossiblePics': { processingMessage: "Defying reality...", simulation: (ctx, img) => { ctx.filter = 'invert(1) hue-rotate(180deg)'; ctx.drawImage(img, 0, 0); }},
+                    'proHeadshots': { processingMessage: "Taking professional headshots...", simulation: (ctx, img) => { ctx.filter = 'brightness(1.05) contrast(1.1)'; ctx.drawImage(img, 0, 0); }},
+                    'figurine3d': { processingMessage: "Creating your 3D figurine...", simulation: (ctx, img) => { ctx.filter = 'saturate(1.6) contrast(1.4) brightness(1.1)'; ctx.drawImage(img, 0, 0); }}
+                };
+
+                const effect = effects[effectType];
+                showNotification(effect.processingMessage, false);
+                elements.processingText.textContent = effect.processingMessage;
+                showPage('processingSelfie');
+
+                try {
+                    // This will still use the local simulation for now.
+                    // To use a real AI, you would create a new /api/apply-effect.js function
+                    const modifiedSelfieBlob = await applyLocalFilter(state.originalPhoto, effect.simulation);
+                    const removedBgUrl = await removeBackground(modifiedSelfieBlob);
+                    state.processedSelfieUrl = removedBgUrl;
+                    elements.selfiePreviewStep3.src = state.processedSelfieUrl;
+                    showNotification("Effect applied!", false);
+                } catch (error) {
+                    showNotification(error.message || `Failed to apply ${effectType} filter.`, true);
+                } finally {
+                    showPage('backgroundGenerator');
+                }
+            }
+
+            elements.applyEffectButton.addEventListener('click', () => {
+                const selectedEffect = elements.effectSelect.value;
+                applySpecialEffect(selectedEffect);
+            });
+            
+            elements.originalSelfieButton.addEventListener('click', () => {
+                state.processedSelfieUrl = state.removedBgSelfieUrl;
+                elements.selfiePreviewStep3.src = state.processedSelfieUrl;
+                showNotification("Reverted to original selfie.", false);
+            });
+            
+            // --- UPDATED to call Vercel API ---
+            async function generateBackground() {
+                const topic = elements.topicSelect.value;
+                const userPrompt = elements.promptInput.value;
+                const basePrompt = userPrompt ? `${userPrompt}` : `a ${topic} scene`;
+                const compositionalGuidance = `A scenic, wide-angle photograph of ${basePrompt}, in a ${topic} style. The scene is a beautiful background, with the main subject matter off to the sides, leaving a natural open area in the foreground. No central subject.`;
+                const finalPrompt = compositionalGuidance;
+
+                try {
+                    const response = await fetch('/api/generate-background', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ prompt: finalPrompt })
+                    });
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.error || 'Failed to get response from generation proxy.');
+                    }
+                    const result = await response.json();
+                    if (result.predictions && result.predictions[0].bytesBase64Encoded) {
+                        return `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
+                    } else {
+                        if (result.predictions?.[0]?.safetyRatings) {
+                             throw new Error('Prompt was blocked for safety reasons. Please try another.');
+                        }
+                        throw new Error('AI service did not return an image via proxy.');
+                    }
+                } catch (error) {
+                    console.error('Error calling background generation proxy:', error);
+                    showNotification(error.message, true);
+                    return `https://placehold.co/800x600/FEE2E2/B91C1C?text=Error:+Proxy+Failed`;
+                }
+            }
+
+            async function applyLocalFilter(imageFile, filterFunction) {
+                return new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        filterFunction(ctx, img);
+                        canvas.toBlob(resolve, 'image/png');
+                    };
+                    img.onerror = reject;
+                    img.src = URL.createObjectURL(imageFile);
+                });
+            }
+
+            elements.nextToConfirm.addEventListener('click', () => {
+                if (!state.generatedBgUrl) {
+                    showNotification('Please generate a background first.');
+                    return;
+                }
+                elements.selfieResult.src = state.processedSelfieUrl;
+                elements.backgroundResult.src = state.generatedBgUrl;
+                showPage('confirmation');
+            });
+
+            // --- Step 4: Confirmation ---
+            elements.changeSelfieButton.addEventListener('click', () => {
+                showPage('photoSelector');
+            });
+
+            elements.changeBackgroundButton.addEventListener('click', () => {
+                showPage('backgroundGenerator');
+            });
+
+            elements.confirmAndCombineButton.addEventListener('click', () => {
+                showPage('finalResult');
+                combineImages();
+            });
+
+            // --- Step 5: Final Result ---
+            function combineImages() {
+                elements.finalLoader.classList.remove('hidden');
+                const canvas = elements.finalCanvas;
+                const ctx = canvas.getContext('2d');
+                const bgImage = new Image();
+                bgImage.crossOrigin = "Anonymous";
+                const selfieImage = new Image();
+                selfieImage.crossOrigin = "Anonymous";
+
+                let loaded = 0;
+                const draw = () => {
+                    loaded++;
+                    if (loaded === 2) {
+                        canvas.width = bgImage.naturalWidth || 800; // Default size
+                        canvas.height = bgImage.naturalHeight || 600;
+                        ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height); // Ensure bg fills canvas
+                        const scale = Math.min((canvas.width * 0.8) / selfieImage.naturalWidth, (canvas.height * 0.8) / selfieImage.naturalHeight);
+                        const sWidth = selfieImage.naturalWidth * scale;
+                        const sHeight = selfieImage.naturalHeight * scale;
+                        const sX = (canvas.width - sWidth) / 2;
+                        const sY = (canvas.height - sHeight);
+                        ctx.drawImage(selfieImage, sX, sY, sWidth, sHeight);
+                        elements.downloadButton.href = canvas.toDataURL('image/png');
+                        elements.finalLoader.classList.add('hidden');
+                    }
+                };
+
+                bgImage.onload = draw;
+                selfieImage.onload = draw;
+                bgImage.onerror = () => {
+                    showNotification("Failed to load background image.");
+                    ctx.fillStyle = '#E2E8F0';
+                    ctx.fillRect(0,0,canvas.width, canvas.height);
+                    draw();
+                }
+                selfieImage.onerror = () => showNotification("Failed to load selfie image.");
+                bgImage.src = state.generatedBgUrl;
+                selfieImage.src = state.processedSelfieUrl;
+            }
+
+            elements.startOverButton.addEventListener('click', () => {
+                state.originalPhoto = null;
+                state.processedSelfieUrl = null;
+                state.removedBgSelfieUrl = null;
+                state.generatedBgUrl = null;
+                elements.fileInput.value = '';
+                elements.photoPreview.src = '';
+                elements.photoPreviewContainer.classList.add('hidden');
+                elements.backgroundPreviewContainer.classList.add('hidden');
+                elements.promptInput.value = '';
+                showPage('photoSelector');
+            });
+
+            // --- Initial Setup ---
+            showPage('photoSelector');
+        });
+    </script>
+</body>
+</html>
+
