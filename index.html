@@ -95,9 +95,7 @@
                 <div class="grid md:grid-cols-2 gap-6">
                     <div>
                         <label for="topic-select" class="block text-sm font-medium text-gray-700 mb-1">Choose a Category</label>
-                        <select id="topic-select" class="w-full p-2 border border-gray-300 rounded-lg">
-                            <option>Funny</option> <option>Humor</option> <option>Academic</option> <option>Sad</option> <option>Meme</option> <option>News</option> <option>Nature</option> <option>Animal</option>
-                        </select>
+                        <select id="topic-select" class="w-full p-2 border border-gray-300 rounded-lg"></select>
                     </div>
                     <div>
                         <label for="prompt-input" class="block text-sm font-medium text-gray-700 mb-1">Describe your background</label>
@@ -124,19 +122,7 @@
                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                         <label for="effect-select" class="block text-sm font-medium text-gray-700 mb-1">Choose a Theme</label>
-                        <select id="effect-select" class="w-full p-2 border border-gray-300 rounded-lg">
-                            <option value="aging">Getting Old</option>
-                            <option value="youth">Getting Young</option>
-                            <option value="monster">Being a Monster</option>
-                            <option value="timeTraveler">Time Traveler</option>
-                            <option value="styleLookbook">Style Lookbook</option>
-                            <option value="mallShoot80s">80s Mall Shoot</option>
-                            <option value="miniatureMe">Miniature Me</option>
-                            <option value="hairStyler">Hair Styler</option>
-                            <option value="impossiblePics">Impossible Pics</option>
-                            <option value="proHeadshots">Pro Headshots</option>
-                            <option value="figurine3d">3D Figure</option>
-                        </select>
+                        <select id="effect-select" class="w-full p-2 border border-gray-300 rounded-lg"></select>
                     </div>
                     <div>
                         <label for="effect-prompt-input" class="block text-sm font-medium text-gray-700 mb-1">Add custom details (optional)</label>
@@ -207,6 +193,34 @@
                 generatedBgUrl: null, // URL from Gemini
             };
 
+            // --- Data for themes and categories ---
+            const backgroundCategories = {
+                'self-defined': 'Self Defined Prompt',
+                'funny': 'Funny',
+                'humor': 'Humor',
+                'academic': 'Academic',
+                'sad': 'Sad',
+                'meme': 'Meme',
+                'news': 'News',
+                'nature': 'Nature',
+                'animal': 'Animal',
+            };
+            
+            const specialEffects = {
+                'self-defined': { name: 'Self Defined Prompt', prompt: 'Considering the uploaded selfie, transform the person according to the following description:' },
+                'aging': { name: 'Getting Old', prompt: 'Make the person in the photo look significantly older, with realistic wrinkles and gray hair, but ensure their face is still recognizable.' },
+                'youth': { name: 'Getting Young', prompt: 'Make the person in the photo look significantly younger, with smooth skin and a vibrant appearance, while keeping their facial features recognizable.' },
+                'monster': { name: 'Being a Monster', prompt: 'Transform the person in the photo into a friendly fantasy orc with green skin and small tusks. Keep their facial structure recognizable.' },
+                'timeTraveler': { name: 'Time Traveler', prompt: 'Edit the person in the photo to look like a time traveler. Add futuristic or steampunk-style goggles and clothing accessories.' },
+                'styleLookbook': { name: 'Style Lookbook', prompt: 'Re-style this photo to look like a high-fashion magazine photoshoot with dramatic, professional lighting.' },
+                'mallShoot80s': { name: '80s Mall Shoot', prompt: 'Recreate this photo in the style of a 1980s mall glamour shot, with soft focus and a retro aesthetic.' },
+                'miniatureMe': { name: 'Miniature Me', prompt: 'Transform the person into a collectible miniature figurine. The style should look like polished PVC plastic.' },
+                'hairStyler': { name: 'Hair Styler', prompt: 'Give the person in the photo a completely new, modern hairstyle with a bold, unnatural hair color like electric blue.' },
+                'impossiblePics': { name: 'Impossible Pics', prompt: 'Place the person from the photo into a surreal, impossible scene, like standing on a cloud.' },
+                'proHeadshots': { name: 'Pro Headshots', prompt: 'Turn this into a professional corporate headshot. The person should be wearing a business suit against a clean office background.' },
+                'figurine3d': { name: '3D Figure', prompt: 'Create a commercial photo of a 1/7 scale PVC figurine of the person in the image. Place the figurine on a computer desk. Next to it, show a packaging box with their image on it.' }
+            };
+
             // --- DOM Elements ---
             const pages = {
                 photoSelector: document.getElementById('page-photo-selector'),
@@ -271,6 +285,15 @@
                 notification.className = `fixed top-5 right-5 text-white py-2 px-4 rounded-lg shadow-lg transition-opacity duration-300 ${isError ? 'bg-red-500' : 'bg-green-500'}`;
                 notification.classList.remove('hidden');
                 setTimeout(() => { notification.classList.add('hidden'); }, 5000);
+            }
+
+            function populateDropdown(selectElement, data) {
+                for (const key in data) {
+                    const option = document.createElement('option');
+                    option.value = key;
+                    option.textContent = typeof data[key] === 'string' ? data[key] : data[key].name;
+                    selectElement.appendChild(option);
+                }
             }
 
             // --- Page 1: Photo Selection ---
@@ -348,12 +371,10 @@
                 }
             }
             
-            // --- UPDATED to call Vercel API ---
             async function removeBackground(imageFile) {
                 const formData = new FormData();
                 formData.append('image_file', imageFile);
                 try {
-                    // Call your own API route
                     const response = await fetch('/api/remove-background', {
                         method: 'POST',
                         body: formData,
@@ -385,28 +406,23 @@
                 }
             });
             
-            // --- UPDATED to call the new Vercel API function ---
             async function applySpecialEffect(effectType) {
                 const customPromptText = elements.effectPromptInput.value;
-                
-                const prompts = {
-                    'aging': "Considering the uploaded selfie, transform the person in the photo to look much older, adding realistic wrinkles, graying hair, and age spots, while keeping the person recognizable.",
-                    'youth': "Considering the uploaded selfie, transform the person in the photo to look much younger, with smoother skin, fewer wrinkles, and a more vibrant, youthful appearance.",
-                    'monster': "Considering the uploaded selfie, transform the person in the photo into a friendly fantasy monster, like a green-skinned orc with small tusks, but keep their facial structure recognizable.",
-                    'timeTraveler': "Turn the person in the photo into a time traveler, with futuristic or steampunk-style goggles and clothing.",
-                    'styleLookbook': "Recreate this selfie in the style of a high-fashion magazine photoshoot, with dramatic lighting and a professional look.",
-                    'mallShoot80s': "Recreate this selfie as if it were a cheesy 1980s mall glamour shot, with soft focus, big hair, and a laser grid background.",
-                    'miniatureMe': "Turn the person in this photo into a realistic-looking, collectible miniature figurine made of polished PVC.",
-                    'hairStyler': "Give the person in the photo a completely different, modern, and stylish haircut and a bold new hair color like electric blue or vibrant pink.",
-                    'impossiblePics': "Place the person from the selfie into an impossible, surreal scene, like standing on a cloud or shaking hands with an astronaut on the moon.",
-                    'proHeadshots': "Turn this selfie into a professional corporate headshot, with the person wearing a business suit and set against a clean, professional office background.",
-                    'figurine3d': "Using the person in the photo as a reference, create a commercial-style photo of a 1/7 scale PVC figurine of them. The figurine should be on a computer desk next to a packaging box with their image on it."
-                };
+                let basePrompt;
 
-                const basePrompt = prompts[effectType];
+                if (effectType === 'self-defined') {
+                    if (!customPromptText) {
+                        showNotification('Please describe the effect you want in the custom details field.', true);
+                        return;
+                    }
+                    basePrompt = specialEffects['self-defined'].prompt;
+                } else {
+                    basePrompt = specialEffects[effectType].prompt;
+                }
+                
                 const finalPrompt = customPromptText ? `${basePrompt} Also, incorporate this detail: ${customPromptText}` : basePrompt;
                 
-                showNotification(`Applying "${effectType}" effect...`, false);
+                showNotification(`Applying "${specialEffects[effectType].name}" effect...`, false);
                 elements.processingText.textContent = `Applying effect... This can take up to 30 seconds.`;
                 showPage('processingSelfie');
 
@@ -422,13 +438,14 @@
 
                     if (!response.ok) {
                         const error = await response.json();
+                        if (error.error && error.error.includes('Internal error')) {
+                            throw new Error('The AI service had a temporary error. Please try again or with a different prompt.');
+                        }
                         throw new Error(error.error || 'Failed to apply the AI effect.');
                     }
 
                     const result = await response.json();
                     const newPhotoBlob = await (await fetch(`data:image/png;base64,${result.base64Data}`)).blob();
-
-                    // IMPORTANT: Now we remove the background from the NEWLY generated photo
                     const removedBgUrl = await removeBackground(newPhotoBlob);
                     state.processedSelfieUrl = removedBgUrl;
                     elements.selfiePreviewStep3.src = state.processedSelfieUrl;
@@ -452,11 +469,24 @@
             });
             
             async function generateBackground() {
-                const topic = elements.topicSelect.value;
+                const topicKey = elements.topicSelect.value;
                 const userPrompt = elements.promptInput.value;
-                const basePrompt = userPrompt ? `${userPrompt}` : `a ${topic} scene`;
-                const compositionalGuidance = `A scenic, wide-angle photograph of ${basePrompt}, in a ${topic} style. The scene is a beautiful background, with the main subject matter off to the sides, leaving a natural open area in the foreground. No central subject.`;
-                const finalPrompt = compositionalGuidance;
+                let basePrompt;
+                let finalPrompt;
+
+                if (topicKey === 'self-defined') {
+                     if (!userPrompt) {
+                        showNotification('Please describe the background you want.', true);
+                        return `https://placehold.co/800x600/FEE2E2/B91C1C?text=Please+enter+a+prompt`;
+                    }
+                    basePrompt = userPrompt;
+                    // For self-defined, we still add some compositional guidance for better results
+                    finalPrompt = `A scenic, wide-angle photograph of ${basePrompt}. The scene is a beautiful background, with the main subject matter off to the sides, leaving a natural open area in the foreground. No central subject.`;
+                } else {
+                    const topicName = backgroundCategories[topicKey];
+                    basePrompt = userPrompt ? `${userPrompt}` : `a ${topicName} scene`;
+                    finalPrompt = `A scenic, wide-angle photograph of ${basePrompt}, in a ${topicName} style. The scene is a beautiful background, with the main subject matter off to the sides, leaving a natural open area in the foreground. No central subject.`;
+                }
 
                 try {
                     const response = await fetch('/api/generate-background', {
@@ -563,6 +593,8 @@
             });
 
             // --- Initial Setup ---
+            populateDropdown(elements.topicSelect, backgroundCategories);
+            populateDropdown(elements.effectSelect, specialEffects);
             showPage('photoSelector');
         });
     </script>
