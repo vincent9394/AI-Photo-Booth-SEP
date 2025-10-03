@@ -481,11 +481,11 @@
                     }
                     basePrompt = userPrompt;
                     // For self-defined, we still add some compositional guidance for better results
-                    finalPrompt = `A scenic, wide-angle photograph of ${basePrompt}. The scene is a beautiful background, with the main subject matter off to the sides, leaving a natural open area in the foreground. No central subject.`;
+                    finalPrompt = `A scenic, wide-angle photograph of ${basePrompt}. The scene is a background with the main subject matter off to the sides, leaving a open area in the foreground. No central subject. The output photo size is 1864 x 1240 dpi.`;
                 } else {
                     const topicName = backgroundCategories[topicKey];
                     basePrompt = userPrompt ? `${userPrompt}` : `a ${topicName} scene`;
-                    finalPrompt = `A scenic, wide-angle photograph of ${basePrompt}, in a ${topicName} style. The scene is a beautiful background, with the main subject matter off to the sides, leaving a natural open area in the foreground. No central subject.`;
+                    finalPrompt = `A scenic, wide-angle photograph of ${basePrompt}, in a ${topicName} style. The scene is a background with the main subject matter off to the sides, leaving a open area in the foreground. No central subject. The output photo size is 1864 x 1240 dpi. `;
                 }
 
                 try {
@@ -548,23 +548,47 @@
                 const selfieImage = new Image();
                 selfieImage.crossOrigin = "Anonymous";
 
+                const desiredWidth = 1240;
+                const desiredHeight = 1864;
+
                 let loaded = 0;
                 const draw = () => {
                     loaded++;
                     if (loaded === 2) {
-                        canvas.width = bgImage.naturalWidth || 800; // Default size
-                        canvas.height = bgImage.naturalHeight || 600;
-                        ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height); // Ensure bg fills canvas
+                        canvas.width = desiredWidth;
+                        canvas.height = desiredHeight;
+
+                        // Draw background, scaling to fill canvas while maintaining aspect ratio
+                        const bgRatio = bgImage.naturalWidth / bgImage.naturalHeight;
+                        const canvasRatio = canvas.width / canvas.height;
+                        let bgDrawWidth, bgDrawHeight, bgX, bgY;
+
+                        if (bgRatio > canvasRatio) { // BG is wider than canvas ratio
+                            bgDrawHeight = canvas.height;
+                            bgDrawWidth = bgDrawHeight * bgRatio;
+                            bgX = (canvas.width - bgDrawWidth) / 2;
+                            bgY = 0;
+                        } else { // BG is taller or same ratio
+                            bgDrawWidth = canvas.width;
+                            bgDrawHeight = bgDrawWidth / bgRatio;
+                            bgX = 0;
+                            bgY = (canvas.height - bgDrawHeight) / 2;
+                        }
+                        ctx.drawImage(bgImage, bgX, bgY, bgDrawWidth, bgDrawHeight);
+                        
+                        // Draw selfie on top
                         const scale = Math.min((canvas.width * 0.8) / selfieImage.naturalWidth, (canvas.height * 0.8) / selfieImage.naturalHeight);
                         const sWidth = selfieImage.naturalWidth * scale;
                         const sHeight = selfieImage.naturalHeight * scale;
                         const sX = (canvas.width - sWidth) / 2;
-                        const sY = (canvas.height - sHeight);
+                        const sY = canvas.height - sHeight; // Place at bottom
                         ctx.drawImage(selfieImage, sX, sY, sWidth, sHeight);
+                        
                         elements.downloadButton.href = canvas.toDataURL('image/png');
                         elements.finalLoader.classList.add('hidden');
                     }
                 };
+
 
                 bgImage.onload = draw;
                 selfieImage.onload = draw;
