@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     
     // Securely access the API key from environment variables
     const apiKey = process.env.GOOGLE_AI_API_KEY;
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`;
     
     const payload = {
         instances: [{ prompt: prompt }],
